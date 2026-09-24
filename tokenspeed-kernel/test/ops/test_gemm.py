@@ -662,3 +662,13 @@ def test_linear_attnres_partials_cuda_portable_strided_inputs() -> None:
             outputs[2],
             torch.einsum("bt,bth->th", unnormalized, values),
         )
+
+
+def test_scales_inner_stride_one_accepts_per_tensor_scalars() -> None:
+    """A 0-d per-tensor scale has no innermost dimension and must count as contiguous."""
+    from tokenspeed_kernel.ops.gemm import _scales_inner_stride_one
+
+    assert _scales_inner_stride_one(None)
+    assert _scales_inner_stride_one(torch.tensor(1.5))
+    assert _scales_inner_stride_one(torch.ones(4))
+    assert not _scales_inner_stride_one(torch.ones(4, 8).t())

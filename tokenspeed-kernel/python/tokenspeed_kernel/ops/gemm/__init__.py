@@ -1221,6 +1221,15 @@ def _kernel_handles_online_mxfp8(kernel_name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _scales_inner_stride_one(scales: torch.Tensor | None) -> bool:
+    """Whether a scale tensor's innermost dimension is contiguous.
+
+    A per-tensor scale is a 0-d tensor with no dimension to index; it is trivially
+    contiguous and must not be probed with ``stride(-1)``.
+    """
+    return scales is None or scales.dim() == 0 or scales.stride(-1) == 1
+
+
 def _validate_gemm_out(
     out: torch.Tensor,
     *,
@@ -1320,9 +1329,9 @@ def mm(
         "n": N,
         "k": K,
         "a_inner_stride_one": A.stride(-1) == 1,
-        "a_scales_inner_stride_one": (A_scales is None or A_scales.stride(-1) == 1),
+        "a_scales_inner_stride_one": _scales_inner_stride_one(A_scales),
         "b_inner_stride_one": B.stride(-1) == 1,
-        "b_scales_inner_stride_one": (B_scales is None or B_scales.stride(-1) == 1),
+        "b_scales_inner_stride_one": _scales_inner_stride_one(B_scales),
         "block_scale_layout": block_scale_layout,
         "out_dtype": out_dtype,
         "out_inner_stride_one": out is None or out.stride(-1) == 1,
