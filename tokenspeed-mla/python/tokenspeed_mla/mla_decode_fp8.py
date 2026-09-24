@@ -3350,7 +3350,10 @@ class BlackwellMultiHeadLatentAttentionForwardFP8:
         # the final output via the FMA/exp2 path on sm_100; -1e6 underflows
         # exp2(x * scale) to 0 in fp32 while avoiding -inf propagation.
         cta_m_rows = self.mma_qk_tiler[0] // self.cluster_shape_mnk[0]
-        if cutlass.const_expr(self.arch == "sm_100"):
+        # sm_103 keeps the TMEM load with the fused MAX reduction below. On sm_107 the plain
+        # load measured faster at small batch (15.6 vs 24.6 us at seq 8192, TP1 decode shape)
+        # and equal from 32K context on, so it takes the plain path with sm_100.
+        if cutlass.const_expr(self.arch != "sm_103"):
             cute.copy(tmem_tiled_copy, tTR_tAcc, tTR_rAcc)
             # Early S release: fence TMEM load and release S buffer immediately
             # so MMA warp can start the next QK computation without waiting for
@@ -3432,7 +3435,7 @@ class BlackwellMultiHeadLatentAttentionForwardFP8:
                         )
             # reduction for row_max
             row_max_new = tTR_rAcc.load().reduce(cute.ReductionOp.MAX, row_max_new, 0)
-        else:  # SM103 and SM107 support TMEM load with a MAX reduction.
+        else:  # SM103: TMEM load with a MAX reduction.
             tmem_load_red_atom = cute.make_copy_atom(
                 tcgen05.copy.LdRed32x32bOp(
                     tcgen05.copy.Repetition(64), redOp=tcgen05.TmemLoadRedOp.MAX
