@@ -77,8 +77,6 @@ def _ngram_ids_kernel(
     HPN: tl.constexpr,
     H: tl.constexpr,
     uniform_length,
-    UNIFORM_INDEX: tl.constexpr,
-    SINGLE_REQUEST: tl.constexpr,
     WRITE_TAIL: tl.constexpr,
     SCATTER_TAIL: tl.constexpr,
     ENABLE_PDL: tl.constexpr,
@@ -105,8 +103,8 @@ def _ngram_ids_kernel(
     mask = rows < total
     if ENABLE_PDL:
         tl.extra.cuda.gdc_wait()
-    if UNIFORM_INDEX:
-        if SINGLE_REQUEST:
+    if uniform_length > 0:
+        if batch_size == 1:
             req = tl.full(rows.shape, 0, tl.int64)
             col = rows.to(tl.int64)
             start = req
@@ -118,10 +116,7 @@ def _ngram_ids_kernel(
         tl.store(col_ptr + rows, col, mask=mask & owner)
         request_mask = (rows < batch_size) & owner
         tl.store(lengths_ptr + rows, uniform_length, mask=request_mask)
-        if SINGLE_REQUEST:
-            tl.store(starts_ptr + rows, 0, mask=request_mask)
-        else:
-            tl.store(starts_ptr + rows, rows * uniform_length, mask=request_mask)
+        tl.store(starts_ptr + rows, rows * uniform_length, mask=request_mask)
     else:
         req = tl.load(req_ptr + rows, mask=mask, other=0).to(tl.int64)
         col = tl.load(col_ptr + rows, mask=mask, other=0).to(tl.int64)

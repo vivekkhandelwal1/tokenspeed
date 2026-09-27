@@ -38,4 +38,6 @@ cover irregular splits, padded output rows, and strided scan outputs.
 
 Compilation guards warm these kernels, then sweep token counts (and PLE
 request counts) without allowing new Triton specializations. PLE covers
-single-request, uniform multi-request and ragged indexing separately.
+transitions between single-request, uniform multi-request and ragged indexing
+within one compiled kernel. Those selections use runtime values so startup
+warmup also covers batch layouts first seen during serving.

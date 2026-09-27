@@ -7,6 +7,9 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,14 +28,13 @@ from utils import assert_no_triton_compile
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires GPU")
-@pytest.mark.parametrize("index_mode", ["single", "uniform", "ragged"])
-def test_ngram_reuses_kernel_for_variable_token_counts(index_mode):
+def test_ngram_reuses_kernel_for_variable_token_counts():
     device = "cuda"
     multipliers = torch.tensor([12345678901, 31415926535], device=device)
     vocab_sizes = torch.tensor([1013], device=device)
     offsets = torch.zeros(1, dtype=torch.int64, device=device)
 
-    def run(length, batch_size):
+    def run(length, batch_size, index_mode):
         lengths = [length] * batch_size
         if index_mode == "ragged":
             lengths[-1] += 3
@@ -61,12 +63,15 @@ def test_ngram_reuses_kernel_for_variable_token_counts(index_mode):
         )
         return actual
 
-    run(1476, 1 if index_mode == "single" else 2)
+    run(1476, 1, "single")
     with assert_no_triton_compile(_ngram_ids_kernel):
-        for length, batch_size in ((1499, 3), (1620, 4), (2064, 16)):
-            actual = run(length, 1 if index_mode == "single" else batch_size)
-            assert actual.shape == (
-                (length if index_mode == "single" else length * batch_size)
-                + (3 if index_mode == "ragged" else 0),
-                1,
-            )
+        for index_mode in ("ragged", "uniform", "single"):
+            for length, batch_size in ((1499, 3), (1620, 4), (2064, 16)):
+                actual = run(
+                    length, 1 if index_mode == "single" else batch_size, index_mode
+                )
+                assert actual.shape == (
+                    (length if index_mode == "single" else length * batch_size)
+                    + (3 if index_mode == "ragged" else 0),
+                    1,
+                )

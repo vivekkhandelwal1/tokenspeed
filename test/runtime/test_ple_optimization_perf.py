@@ -195,8 +195,6 @@ def test_ple_ngram_launch_config_perf(batch_size: int, length: int, mode: str) -
             HPN=4,
             H=8,
             uniform_length=0,
-            UNIFORM_INDEX=False,
-            SINGLE_REQUEST=False,
             WRITE_TAIL=False,
             SCATTER_TAIL=False,
             USE_RECIPROCAL=False,
