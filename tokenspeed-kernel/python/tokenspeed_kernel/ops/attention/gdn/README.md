@@ -35,3 +35,7 @@ attention breaks, where those counts change with each grouped prefill batch.
 The gather still specializes on feature geometry and strides, but it reuses the
 same compiled kernel across different token splits and output lengths. Tests
 cover irregular splits, padded output rows, and strided scan outputs.
+
+Compilation guards warm these kernels, then sweep token counts (and PLE
+request counts) without allowing new Triton specializations. PLE covers
+single-request, uniform multi-request and ragged indexing separately.

@@ -20,10 +20,17 @@
 
 """Qwen4-Exp's request-shaped state remains live in a padded prefill graph."""
 
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from ci_system.ci_register import register_cuda_ci  # noqa: E402
+
+register_cuda_ci(est_time=10, suite="runtime-1gpu")
 
 import tokenspeed.runtime.layers.attention.qsa.indexer as qsa_indexer_module
 from tokenspeed.runtime.execution.breakable_cuda_graph import (
@@ -277,3 +284,7 @@ def test_qsa_break_replays_live_rows_positions_and_cache_writes(monkeypatch) -> 
         torch.testing.assert_close(captured[:count], expected, rtol=0, atol=0)
         torch.testing.assert_close(pool.cache, expected_cache, rtol=0, atol=0)
         assert torch.count_nonzero(captured[count:]) == 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main([__file__, "-v"]))
