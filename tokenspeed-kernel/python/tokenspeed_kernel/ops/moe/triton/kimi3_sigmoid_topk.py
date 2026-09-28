@@ -198,7 +198,8 @@ def kimi3_sigmoid_bias_topk(
 #: NVIDIA measured on GB200, cold L2: ahead to 256 rows, tying at 320.
 #: CDNA5 measured on MI455X: 1.54x from two rows, still ahead at 512 and
 #: behind by 1024. One row stays with the decode specialist, and the
-#: gfx1250 Gluon kernel starts at 513, so these ranges do not overlap.
+#: gfx1250 Gluon remains available on these rows for explicit selection;
+#: the packed registration wins automatic selection by priority.
 #: CDNA4 one-token K3 stays on the decode specialist: on MI355X that kernel
 #: is ahead of packed, and it already covers this shape.
 _PACKED_ROWS_NVIDIA = range(1, 257)
@@ -263,8 +264,15 @@ def triton_kimi3_packed_sigmoid_bias_topk_nvidia(
     topk: int,
     routed_scaling_factor: float,
     normalize_topk_weights: bool,
-    weights_dtype: torch.dtype = torch.float32,
+    weights_dtype: torch.dtype,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return packed top-16 weights and ids for FP32 ``[tokens, 896]`` logits.
+
+    Arguments follow ``kimi3_sigmoid_bias_topk`` with explicit ``topk=16``.
+    Layouts are made contiguous and correction bias is widened to FP32.
+    Returns ``[tokens, 16]`` weights in ``weights_dtype`` and INT32 ids;
+    mapped variants translate ids through ``logical_to_physical_map``.
+    """
     return _invoke_packed(
         router_logits=router_logits,
         correction_bias=correction_bias,
@@ -293,8 +301,15 @@ def triton_kimi3_packed_sigmoid_bias_topk_nvidia_mapped(
     routed_scaling_factor: float,
     normalize_topk_weights: bool,
     logical_to_physical_map: torch.Tensor,
-    weights_dtype: torch.dtype = torch.float32,
+    weights_dtype: torch.dtype,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return packed top-16 weights and ids for FP32 ``[tokens, 896]`` logits.
+
+    Arguments follow ``kimi3_sigmoid_bias_topk`` with explicit ``topk=16``.
+    Layouts are made contiguous and correction bias is widened to FP32.
+    Returns ``[tokens, 16]`` weights in ``weights_dtype`` and INT32 ids;
+    mapped variants translate ids through ``logical_to_physical_map``.
+    """
     return _invoke_packed(
         router_logits=router_logits,
         correction_bias=correction_bias,
@@ -317,7 +332,7 @@ def triton_kimi3_packed_sigmoid_bias_topk_nvidia_mapped(
         vendors=frozenset({"amd"}),
     ),
     signatures=_PACKED_SIGNATURES,
-    priority=Priority.SPECIALIZED,
+    priority=Priority.SPECIALIZED + 1,
     traits={**_PACKED_CONTRACT, "tokens": _PACKED_ROWS_CDNA5},
 )
 def triton_kimi3_packed_sigmoid_bias_topk_gfx1250(
@@ -327,8 +342,15 @@ def triton_kimi3_packed_sigmoid_bias_topk_gfx1250(
     topk: int,
     routed_scaling_factor: float,
     normalize_topk_weights: bool,
-    weights_dtype: torch.dtype = torch.float32,
+    weights_dtype: torch.dtype,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return packed top-16 weights and ids for FP32 ``[tokens, 896]`` logits.
+
+    Arguments follow ``kimi3_sigmoid_bias_topk`` with explicit ``topk=16``.
+    Layouts are made contiguous and correction bias is widened to FP32.
+    Returns ``[tokens, 16]`` weights in ``weights_dtype`` and INT32 ids;
+    mapped variants translate ids through ``logical_to_physical_map``.
+    """
     return _invoke_packed(
         router_logits=router_logits,
         correction_bias=correction_bias,
@@ -361,8 +383,15 @@ def triton_kimi3_packed_sigmoid_bias_topk_gfx1250_mapped(
     routed_scaling_factor: float,
     normalize_topk_weights: bool,
     logical_to_physical_map: torch.Tensor,
-    weights_dtype: torch.dtype = torch.float32,
+    weights_dtype: torch.dtype,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return packed top-16 weights and ids for FP32 ``[tokens, 896]`` logits.
+
+    Arguments follow ``kimi3_sigmoid_bias_topk`` with explicit ``topk=16``.
+    Layouts are made contiguous and correction bias is widened to FP32.
+    Returns ``[tokens, 16]`` weights in ``weights_dtype`` and INT32 ids;
+    mapped variants translate ids through ``logical_to_physical_map``.
+    """
     return _invoke_packed(
         router_logits=router_logits,
         correction_bias=correction_bias,
